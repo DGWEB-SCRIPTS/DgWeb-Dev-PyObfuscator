@@ -12,7 +12,7 @@ import sys
 # ==========================================================
 AUTHOR = "DgWeb Dev"
 ENGINE = "DgWeb Dev Engine"
-VERSION = "v24.5 (Stable Serverless Edition - Vercel Fix)"
+VERSION = "v24.8 (Stable Vercel WSGI/App Edition)"
 
 BANNER = f"""# ██████╗  ██████╗ ██╗    ██╗███████╗██████╗ 
 # ██╔══██╗██╔════╝ ██║    ██║██╔════╝██╔══██╗
@@ -23,13 +23,11 @@ BANNER = f"""# ██████╗  ██████╗ ██╗    ██�
 # Protegido por: {AUTHOR} | Powered by {ENGINE} {VERSION}"""
 
 def _get_sha256(data):
-    """Gera hash para validação de integridade de chunks."""
     if isinstance(data, str):
         data = data.encode()
     return hashlib.sha256(data).hexdigest()
 
 def _generate_runner(payload, psw):
-    """Gera o script Python autônomo que contém a VM."""
     v_run = "vm_launch_" + "".join(random.choices(string.ascii_lowercase, k=5))
     return f"""{BANNER}
 import sys, zlib, base64, hashlib, hmac, json
@@ -38,10 +36,9 @@ def {v_run}(key_input):
     v_data = "{payload}"
     try:
         raw_vmp = v_data.split("DGS|")[1].split("|DGE")[0]
-        vmp = json.loads(zlib.decompress(base64.b85decode(raw_vmp)).decode())
+        vmp = json.loads(zlib.decompress(base64.b64decode(raw_vmp)).decode('utf-8'))
     except Exception: return sys.stderr.write("VM_CORRUPTION_DETECTED\\n")
 
-    # Fallback robusto para inicialização de memória
     max_idx = -1
     for i in vmp:
         if i[0] == 10 and i[1] > max_idx: max_idx = i[1]
@@ -59,12 +56,10 @@ def {v_run}(key_input):
                     raise ValueError("CHUNK_INTEGRITY_FAIL")
                 mem[idx] = val
             elif op == 20: 
-                # Montagem segura: filtra Nones para evitar falha por lacunas
                 raw_str = "".join([m for m in mem if m is not None])
                 if not raw_str: raise ValueError("ASSEMBLE_EMPTY")
-                stack.append(base64.b85decode(raw_str))
+                stack.append(base64.b64decode(raw_str))
             elif op == 50: 
-                # Proteção contra Stack Underflow
                 if not stack: raise ValueError("STACK_EMPTY_ON_VERIFY")
                 if hmac.new(derived_key, stack[-1], hashlib.sha256).hexdigest() != instr[1]:
                     return sys.stderr.write("INVALID_ACCESS_KEY\\n")
@@ -86,17 +81,18 @@ if __name__ == "__main__":
 """
 
 def obfuscate_logic(source_code, password):
-    """Pipeline DIVM determinístico de ofuscação"""
     try:
         compile(source_code, '<obfuscation_check>', 'exec')
         z_data = zlib.compress(source_code.encode('utf-8'), 9)
         key = hashlib.sha256((password + AUTHOR).encode()).digest()
         enc_data = bytes(z_data[i] ^ key[i % len(key)] for i in range(len(z_data)))
         signature = hmac.new(key, enc_data, hashlib.sha256).hexdigest()
-        b85_str = base64.b85encode(enc_data).decode()
+        
+        # Base64 para garantir string safe
+        b64_str = base64.b64encode(enc_data).decode('utf-8')
 
         chunk_size = 64 
-        chunks = [b85_str[i:i+chunk_size] for i in range(0, len(b85_str), chunk_size)]
+        chunks = [b64_str[i:i+chunk_size] for i in range(0, len(b64_str), chunk_size)]
         total_chunks = len(chunks)
 
         vmp = []
@@ -109,18 +105,17 @@ def obfuscate_logic(source_code, password):
         vmp.append([60])
         vmp.append([70])
 
-        vm_raw = json.dumps(vmp).encode()
-        vm_payload = "DGS|" + base64.b85encode(zlib.compress(vm_raw)).decode() + "|DGE"
+        vm_raw = json.dumps(vmp).encode('utf-8')
+        vm_payload = "DGS|" + base64.b64encode(zlib.compress(vm_raw)).decode('utf-8') + "|DGE"
         return _generate_runner(vm_payload, password)
     except Exception as e:
         return f"# BUILD_ERROR: {str(e)}"
 
 def decode_logic(payload, password):
-    """Pipeline DIVM reverso de recuperação"""
     try:
         if "DGS|" not in payload: return None, "FORMATO_INVALIDO"
         raw_vmp = payload.split("DGS|")[1].split("|DGE")[0]
-        vmp = json.loads(zlib.decompress(base64.b85decode(raw_vmp)).decode())
+        vmp = json.loads(zlib.decompress(base64.b64decode(raw_vmp)).decode('utf-8'))
 
         max_idx = -1
         for i in vmp:
@@ -135,7 +130,7 @@ def decode_logic(payload, password):
             if op == 10: mem[instr[1]] = instr[2]
             elif op == 20: 
                 raw_str = "".join([m for m in mem if m is not None])
-                if raw_str: stack.append(base64.b85decode(raw_str))
+                if raw_str: stack.append(base64.b64decode(raw_str))
             elif op == 50:
                 if not stack: return None, "STACK_UNDERFLOW_HMAC"
                 if hmac.new(derived_key, stack[-1], hashlib.sha256).hexdigest() != instr[1]:
@@ -154,33 +149,50 @@ def decode_logic(payload, password):
     except Exception as e:
         return None, f"ERRO_DECODE: {str(e)}"
 
-
 # ==========================================================
 # ENTRYPOINT SERVERLESS VERCEL
 # ==========================================================
-def handler(request):
+def main(request):
     try:
         import json
+        body = {}
 
-        raw = request.body
-        if isinstance(raw, bytes):
-            raw = raw.decode("utf-8")
+        # 🔥 VERCEL SAFE PARSE
+        try:
+            body = request.get_json() or {}
+        except:
+            raw = getattr(request, "body", None)
 
-        body = json.loads(raw) if raw else {}
+            if raw is None and hasattr(request, "get_data"):
+                raw = request.get_data()
+
+            if isinstance(raw, bytes):
+                raw = raw.decode("utf-8")
+
+            if raw:
+                body = json.loads(raw)
+            else:
+                body = {}
 
         mode = body.get("mode", "encode")
         code = body.get("codigo", "")
         psw = body.get("senha", "")
 
         if mode == "encode":
-            res = obfuscate_logic(code, psw)
-            return {"status": "ok", "ofuscado": res}
+            return {"status": "ok", "ofuscado": obfuscate_logic(code, psw)}
 
         if mode == "decode":
             res, status = decode_logic(code, psw)
-            return {"status": "ok", "desofuscado": res} if status == "ok" else {"status": "error", "message": status}
+            return (
+                {"status": "ok", "desofuscado": res}
+                if status == "ok"
+                else {"status": "error", "message": status}
+            )
 
         return {"status": "error", "message": "MODO_INVALIDO"}
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+# Exporta para o Vercel reconhecer como a aplicação
+app = main
