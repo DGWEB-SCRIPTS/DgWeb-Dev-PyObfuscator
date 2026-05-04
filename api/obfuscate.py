@@ -4,6 +4,7 @@ import base64
 import random
 import string
 import zlib
+import re
 
 def random_id(length=12):
     return 'dg_' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
@@ -13,15 +14,39 @@ class handler(BaseHTTPRequestHandler):
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(content_length).decode())
-            codigo_original = body.get("codigo", "")
+            input_code = body.get("codigo", "")
             
-            payload = base64.b85encode(zlib.compress(codigo_original.encode())).decode()
-            v_1, v_2, v_3, v_4 = random_id(), random_id(), random_id(), random_id()
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+
+            # Lógica de Descriptografia (Maze Decoder)
+            if "decrypt" in self.path:
+                try:
+                    # Localiza a string em Base85 dentro do labirinto gerado
+                    match = re.search(r'["\']([A-Za-z0-9!#$%&()*+,-./:;<=>?@^_`{|}~]+)["\']', input_code)
+                    if match:
+                        data = match.group(1)
+                        # Reverte a compressão e o encoding
+                        original = zlib.decompress(base64.b85decode(data)).decode()
+                        res = original
+                    else:
+                        res = "# Erro: Padrao Maze nao encontrado ou codigo invalido."
+                except Exception:
+                    res = "# Erro: Falha ao reverter a ofuscacao Maze."
+                
+                self.wfile.write(json.dumps({"ofuscado": res}).encode())
+                return
+
+            # Lógica de Ofuscação (Maze Engine)
+            # Comprime e converte o código original para uma string de difícil leitura
+            payload = base64.b85encode(zlib.compress(input_code.encode())).decode()
+            v1, v2, v3, v4 = random_id(), random_id(), random_id(), random_id()
             
+            # Predicados opacos para confundir a análise estática
             junk_math = [
                 f"sum(int(x) for x in str({random.randint(1000, 9999)})) > 0",
-                f"(lambda x: x*x)({random.randint(1,10)}) >= 0",
-                f"len('{random_id(5)}') != len('{random_id(10)}')"
+                f"(lambda x: x*x)({random.randint(1,10)}) >= 0"
             ]
 
             maze_stub = f"""# ██████╗  ██████╗ ██╗    ██╗███████╗██████╗ 
@@ -35,29 +60,27 @@ class handler(BaseHTTPRequestHandler):
 import base64 as _dg_b
 import zlib as _dg_z
 
-def {v_4}(*args):
+def {v4}(*args):
     _l = list(args)
     return _l[::-1] if len(_l) > 10 else _l
 
-{v_3} = {random.randint(100, 500)}
+{v3} = {random.randint(100, 500)}
 
-def {v_2}():
+def {v2}():
     if {random.choice(junk_math)}:
-        {v_1} = "{payload}"
+        {v1} = "{payload}"
         try:
-            exec(_dg_z.decompress(_dg_b.b85decode({v_1})), globals())
+            # Reconstrução e execução em tempo de execução
+            exec(_dg_z.decompress(_dg_b.b85decode({v1})), globals())
         except:
             pass
     else:
-        print("ERR: " + str({v_3}))
+        print("ERR: " + str({v3}))
 
 if __name__ == "__main__":
-    {v_4}({v_3}, {random.randint(1,100)})
-    {v_2}()
+    {v4}({v3}, {random.randint(1,100)})
+    {v2}()
 """
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
             self.wfile.write(json.dumps({"ofuscado": maze_stub}).encode())
 
         except Exception as e:
