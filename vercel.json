@@ -2,21 +2,22 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/vm.py",
-      "use": "@vercel/python"
+      "src": "package.json",
+      "use": "@vercel/static-build"
     },
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build"
-      }
+      "src": "api/vm.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
     {
-      "src": "/api/vm",
-      "dest": "api/vm.py"
+      "src": "/api/(.*)",
+      "dest": "/api/vm.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
