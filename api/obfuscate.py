@@ -14,7 +14,7 @@ from socketserver import ThreadingMixIn
 # ==========================================================
 AUTHOR = "DgWeb Dev"
 ENGINE = "DgWeb Dev Engine"
-VERSION = "v24.2 (Stable Production Patch 2)"
+VERSION = "v24.3 (Stable Production - Network Fix)"
 
 BANNER = f"""# ██████╗  ██████╗ ██╗    ██╗███████╗██████╗ 
 # ██╔══██╗██╔════╝ ██║    ██║██╔════╝██╔══██╗
@@ -29,6 +29,13 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     allow_reuse_address = True
 
 class ProductionVMHandler(BaseHTTPRequestHandler):
+    
+    def _set_cors_headers(self):
+        """Headers universais para impedir que o Vercel/Navegador corte a conexão."""
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        self.send_header('Access-Control-Max-Age', '86400')
     
     def _get_sha256(self, data):
         if isinstance(data, str):
@@ -76,7 +83,6 @@ def {v_run}(key_input):
         vmp = json.loads(zlib.decompress(base64.b85decode(raw_vmp)).decode())
     except Exception: return sys.stderr.write("VM_CORRUPTION_DETECTED\\n")
 
-    # Fallback robusto para inicialização de memória
     max_idx = -1
     for i in vmp:
         if i[0] == 10 and i[1] > max_idx: max_idx = i[1]
@@ -94,12 +100,10 @@ def {v_run}(key_input):
                     raise ValueError("CHUNK_INTEGRITY_FAIL")
                 mem[idx] = val
             elif op == 20: 
-                # Montagem segura: filtra Nones para evitar falha por lacunas
                 raw_str = "".join([m for m in mem if m is not None])
                 if not raw_str: raise ValueError("ASSEMBLE_EMPTY")
                 stack.append(base64.b85decode(raw_str))
             elif op == 50: 
-                # Proteção contra Stack Underflow
                 if not stack: raise ValueError("STACK_EMPTY_ON_VERIFY")
                 if hmac.new(derived_key, stack[-1], hashlib.sha256).hexdigest() != instr[1]:
                     return sys.stderr.write("INVALID_ACCESS_KEY\\n")
@@ -158,18 +162,37 @@ if __name__ == "__main__":
         except Exception as e:
             return None, f"ERRO_DECODE: {str(e)}"
 
+    def do_OPTIONS(self):
+        """Rota crucial para o Vercel: responde à checagem de segurança (Preflight)."""
+        self.send_response(200)
+        self._set_cors_headers()
+        self.end_headers()
+
+    def do_GET(self):
+        """Rota de Health Check: responde se o Vercel ou o navegador apenas tentar acessar a raiz."""
+        self.send_response(200)
+        self._set_cors_headers()
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps({"status": "online", "engine": ENGINE}).encode())
+
     def do_POST(self):
+        """Rota principal de processamento."""
         try:
             content_length = int(self.headers.get('Content-Length', 0))
-            post_data = json.loads(self.rfile.read(content_length).decode())
+            if content_length == 0:
+                raise ValueError("Payload vazio")
+                
+            raw_data = self.rfile.read(content_length).decode('utf-8')
+            post_data = json.loads(raw_data)
             
             mode = post_data.get("mode", "encode")
             code = post_data.get("codigo", "")
             psw = post_data.get("senha", "")
 
             self.send_response(200)
+            self._set_cors_headers()
             self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
 
             if mode == "encode":
@@ -182,24 +205,24 @@ if __name__ == "__main__":
                 response = {"status": "error", "message": "MODO_INVALIDO"}
 
             self.wfile.write(json.dumps(response).encode())
+            
         except Exception as e:
-            if not self.wfile.closed:
-                self.send_response(500)
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode())
-
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
+            # Tratamento seguro caso o Vercel feche a conexão antes de enviarmos o erro
+            try:
+                if not self.wfile.closed:
+                    self.send_response(500)
+                    self._set_cors_headers()
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode())
+            except:
+                pass # Socket já foi fechado pelo cliente, ignorar com segurança
 
 def main():
     port = 8080
     print(f"--- {ENGINE} {VERSION} ---")
     print(f"STATUS: ONLINE EM PORTA {port}")
-    server = ThreadedHTTPServer(('', port), ProductionVMHandler)
+    server = ThreadedHTTPServer(('0.0.0.0', port), ProductionVMHandler)
     server.serve_forever()
 
 if __name__ == "__main__":
