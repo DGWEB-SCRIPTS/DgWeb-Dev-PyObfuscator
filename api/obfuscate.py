@@ -12,7 +12,7 @@ import sys
 # ==========================================================
 AUTHOR = "DgWeb Dev"
 ENGINE = "DgWeb Dev Engine"
-VERSION = "v24.4 (Stable Serverless Edition)"
+VERSION = "v24.5 (Stable Serverless Edition - Vercel Fix)"
 
 BANNER = f"""# ██████╗  ██████╗ ██╗    ██╗███████╗██████╗ 
 # ██╔══██╗██╔════╝ ██║    ██║██╔════╝██╔══██╗
@@ -160,12 +160,13 @@ def decode_logic(payload, password):
 # ==========================================================
 def handler(request):
     try:
-        # Vercel envia os dados parseados via request.get_json()
-        body = request.get_json()
-        
-        # Proteção caso o payload venha vazio
-        if not body:
-            return {"status": "error", "message": "Payload vazio"}
+        import json
+
+        raw = request.body
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8")
+
+        body = json.loads(raw) if raw else {}
 
         mode = body.get("mode", "encode")
         code = body.get("codigo", "")
@@ -175,11 +176,11 @@ def handler(request):
             res = obfuscate_logic(code, psw)
             return {"status": "ok", "ofuscado": res}
 
-        elif mode == "decode":
+        if mode == "decode":
             res, status = decode_logic(code, psw)
             return {"status": "ok", "desofuscado": res} if status == "ok" else {"status": "error", "message": status}
 
         return {"status": "error", "message": "MODO_INVALIDO"}
 
     except Exception as e:
-        return {"status": "error", "message": f"SERVERLESS_ERROR: {str(e)}"}
+        return {"status": "error", "message": str(e)}
