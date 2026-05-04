@@ -12,7 +12,6 @@ import string
 import zlib
 
 def random_id(length=12):
-    """Gera nomes de variáveis que parecem hashes para confundir a leitura."""
     return 'dg_' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
 class handler(BaseHTTPRequestHandler):
@@ -22,27 +21,20 @@ class handler(BaseHTTPRequestHandler):
         
         codigo_original = body.get("codigo", "")
         
-        # MODO LABIRINTO (Maze Engine)
         try:
-            # 1. Preparação: Compressão e Encoding Base64
-            # Isso mata a análise estática imediata.
             payload_comprimido = base64.b85encode(zlib.compress(codigo_original.encode())).decode()
             
-            # 2. Geração de Identificadores Aleatórios (Obscuridade)
-            var_data = random_id()    # Armazena o código comprimido
-            var_exec = random_id()    # Nome da função de execução
-            var_logic = random_id()   # Variável de controle inútil
-            var_junk = random_id()    # Função de código morto
+            v_1 = random_id()
+            v_2 = random_id()
+            v_3 = random_id()
+            v_4 = random_id()
             
-            # 3. Injeção de Código Morto e Lógica Inútil (Opaque Predicates)
-            # Criamos verificações que sempre são verdadeiras, mas parecem complexas.
             junk_math = [
                 f"sum(int(x) for x in str({random.randint(1000, 9999)})) > 0",
                 f"(lambda x: x*x)({random.randint(1,10)}) >= 0",
-                f"'{random_id(5)}' != '{random_id(6)}'"
+                f"len('{random_id(5)}') != len('{random_id(10)}')"
             ]
 
-            # 4. Reconstrução Dinâmica do Stub (O Labirinto)
             maze_stub = f"""# ██████╗  ██████╗ ██╗    ██╗███████╗██████╗ 
 # ██╔══██╗██╔════╝ ██║    ██║██╔════╝██╔══██╗
 # ██║  ██║██║  ███╗██║ █╗ ██║█████╗  ██████╔╝
@@ -54,40 +46,32 @@ class handler(BaseHTTPRequestHandler):
 import base64 as _dg_b
 import zlib as _dg_z
 
-def {var_junk}(*args):
-    # Código morto para confundir depuradores
+def {v_4}(*args):
     _l = list(args)
     return _l[::-1] if len(_l) > 10 else _l
 
-{var_logic} = {random.randint(100, 500)}
+{v_3} = {random.randint(100, 500)}
 
-def {var_exec}():
-    # Opaque Predicate: Verificação que sempre passa mas polui o fluxo
+def {v_2}():
     if {random.choice(junk_math)}:
-        {var_data} = "{payload_comprimido}"
+        {v_1} = "{payload_comprimido}"
         try:
-            # Reconstrução em Runtime
-            _p = _dg_z.decompress(_dg_b.b85decode({var_data}))
-            exec(_p, globals())
-        except Exception as _e:
+            exec(_dg_z.decompress(_dg_b.b85decode({v_1})), globals())
+        except:
             pass
     else:
-        # Caminho falso (Dead Code Path)
-        print("CRITICAL_ERR: " + str({var_logic}))
+        print(f"ERR: {{ {v_3} }}")
 
 if __name__ == "__main__":
-    {var_junk}({var_logic}, {random.randint(1,100)})
-    {var_exec}()
+    {v_4}({v_3}, {random.randint(1,100)})
+    {v_2}()
 """
-            resultado = maze_stub
-
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({"ofuscado": resultado}).encode())
+            self.wfile.write(json.dumps({{"ofuscado": maze_stub}}).encode())
 
         except Exception as e:
             self.send_response(400)
-            self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({"error": f"Maze Engine Failure: {str(e)}"}).encode())
+            self.wfile.write(json.dumps({{"error": str(e)}}).encode())
