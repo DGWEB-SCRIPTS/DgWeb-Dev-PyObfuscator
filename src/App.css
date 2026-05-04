@@ -1,0 +1,232 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Fira+Code:wght@400;500&display=swap');
+
+:root {
+  --bg-color: #0d0d0d;
+  --card-bg: #161616;
+  --border-color: #262626;
+  --text-main: #ededed;
+  --text-dim: #a1a1a1;
+  --py-blue: #3776ab;
+  --py-yellow: #ffd43b;
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.main-card {
+  width: 100%;
+  max-width: 800px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 48px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Header & Python Icon */
+header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.py-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 16px;
+  opacity: 0.9;
+}
+
+header h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+header h1 span { color: var(--py-blue); }
+
+.subtitle {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+
+/* Form Elements */
+.input-group {
+  margin-bottom: 24px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.input-field, .textarea-field {
+  width: 100%;
+  background: #000;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 14px;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  transition: var(--transition);
+  box-sizing: border-box;
+}
+
+.textarea-field {
+  height: 220px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.85rem;
+  resize: none;
+  line-height: 1.6;
+}
+
+.input-field:focus, .textarea-field:focus {
+  outline: none;
+  border-color: var(--py-blue);
+  box-shadow: 0 0 0 3px rgba(55, 118, 171, 0.15);
+}
+
+/* Action Center */
+.action-container {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  margin-top: 32px;
+}
+
+.split-btn-group {
+  display: flex;
+  width: 100%;
+  max-width: 400px;
+}
+
+.btn-primary {
+  flex: 1;
+  background-color: var(--py-blue);
+  color: #fff;
+  border: none;
+  border-radius: 8px 0 0 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  height: 48px;
+  transition: var(--transition);
+}
+
+.btn-primary:hover { background-color: #2b5d88; }
+.btn-primary.decrypt-mode { background-color: #333; }
+.btn-primary.decrypt-mode:hover { background-color: #444; }
+
+.btn-toggle {
+  width: 48px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: none;
+  border-left: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 0 8px 8px 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-toggle:hover { background-color: rgba(255, 255, 255, 0.1); color: #fff; }
+
+.dropdown-menu {
+  position: absolute;
+  top: 56px;
+  right: 0;
+  left: 0;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 400px;
+  background: #1c1c1c;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 10;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.dropdown-item {
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.dropdown-item:hover { background: var(--py-blue); color: #fff; }
+
+/* Result Area */
+.result-section {
+  margin-top: 40px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 32px;
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.result-header span { font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; }
+
+.copy-link {
+  background: none;
+  border: none;
+  color: var(--py-yellow);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.output-box {
+  background: #000;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  max-height: 250px;
+  overflow: auto;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.8rem;
+  color: #a1a1a1;
+  white-space: pre-wrap;
+}
+
+footer {
+  margin-top: 48px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #444;
+}
+
+footer a { color: #666; text-decoration: none; transition: var(--transition); }
+footer a:hover { color: var(--py-blue); }
