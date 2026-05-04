@@ -1,9 +1,3 @@
-# ---------------------------------------------------------
-# PROJECT: DgWeb Dev PyObfuscator (v4.0 - Maze Engine)
-# AUTHOR: DgWeb Dev
-# GITHUB: https://github.com/DGWEB-SCRIPTS
-# ---------------------------------------------------------
-
 from http.server import BaseHTTPRequestHandler
 import json
 import base64
@@ -16,18 +10,13 @@ def random_id(length=12):
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
-        body = json.loads(self.rfile.read(content_length).decode())
-        
-        codigo_original = body.get("codigo", "")
-        
         try:
-            payload_comprimido = base64.b85encode(zlib.compress(codigo_original.encode())).decode()
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(content_length).decode())
+            codigo_original = body.get("codigo", "")
             
-            v_1 = random_id()
-            v_2 = random_id()
-            v_3 = random_id()
-            v_4 = random_id()
+            payload = base64.b85encode(zlib.compress(codigo_original.encode())).decode()
+            v_1, v_2, v_3, v_4 = random_id(), random_id(), random_id(), random_id()
             
             junk_math = [
                 f"sum(int(x) for x in str({random.randint(1000, 9999)})) > 0",
@@ -54,13 +43,13 @@ def {v_4}(*args):
 
 def {v_2}():
     if {random.choice(junk_math)}:
-        {v_1} = "{payload_comprimido}"
+        {v_1} = "{payload}"
         try:
             exec(_dg_z.decompress(_dg_b.b85decode({v_1})), globals())
         except:
             pass
     else:
-        print(f"ERR: {{ {v_3} }}")
+        print("ERR: " + str({v_3}))
 
 if __name__ == "__main__":
     {v_4}({v_3}, {random.randint(1,100)})
@@ -69,9 +58,10 @@ if __name__ == "__main__":
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({{"ofuscado": maze_stub}}).encode())
+            self.wfile.write(json.dumps({"ofuscado": maze_stub}).encode())
 
         except Exception as e:
-            self.send_response(400)
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({{"error": str(e)}}).encode())
+            self.wfile.write(json.dumps({"error": str(e)}).encode())
