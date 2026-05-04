@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/**/*.py",
+      "src": "api/vm.py",
       "use": "@vercel/python"
     },
     {
@@ -11,6 +11,12 @@
       "config": {
         "distDir": "build"
       }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/vm",
+      "dest": "api/vm.py"
     }
   ]
 }
