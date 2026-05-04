@@ -12,7 +12,7 @@ import sys
 # ==========================================================
 AUTHOR = "DgWeb Dev"
 ENGINE = "DgWeb Dev Engine"
-VERSION = "v24.8 (Stable Vercel WSGI/App Edition)"
+VERSION = "v24.9 (Vercel Diagnostic Mode)"
 
 BANNER = f"""# ██████╗  ██████╗ ██╗    ██╗███████╗██████╗ 
 # ██╔══██╗██╔════╝ ██║    ██║██╔════╝██╔══██╗
@@ -88,7 +88,6 @@ def obfuscate_logic(source_code, password):
         enc_data = bytes(z_data[i] ^ key[i % len(key)] for i in range(len(z_data)))
         signature = hmac.new(key, enc_data, hashlib.sha256).hexdigest()
         
-        # Base64 para garantir string safe
         b64_str = base64.b64encode(enc_data).decode('utf-8')
 
         chunk_size = 64 
@@ -150,14 +149,13 @@ def decode_logic(payload, password):
         return None, f"ERRO_DECODE: {str(e)}"
 
 # ==========================================================
-# ENTRYPOINT SERVERLESS VERCEL
+# DIAGNÓSTICO VERCEL: FALLBACK HANDLER
 # ==========================================================
-def main(request):
+def handler(request):
     try:
-        import json
+        # Vercel safe body read
         body = {}
 
-        # 🔥 VERCEL SAFE PARSE
         try:
             body = request.get_json() or {}
         except:
@@ -174,25 +172,17 @@ def main(request):
             else:
                 body = {}
 
-        mode = body.get("mode", "encode")
-        code = body.get("codigo", "")
-        psw = body.get("senha", "")
-
-        if mode == "encode":
-            return {"status": "ok", "ofuscado": obfuscate_logic(code, psw)}
-
-        if mode == "decode":
-            res, status = decode_logic(code, psw)
-            return (
-                {"status": "ok", "desofuscado": res}
-                if status == "ok"
-                else {"status": "error", "message": status}
-            )
-
-        return {"status": "error", "message": "MODO_INVALIDO"}
+        return {
+            "status": "ok",
+            "message": "API funcionando",
+            "received": body
+        }
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
-# Exporta para o Vercel reconhecer como a aplicação
-app = main
+# Garantindo compatibilidade de exportação caso a Vercel exija
+app = handler
